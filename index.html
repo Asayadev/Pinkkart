@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Pinkkart | Pinkkart</title>
+    <title>Pinkkart | User Panel - Pinkkart</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <style>
         /* ===== THEME VARIABLES ===== */
         :root {
-            --bg-page:       #f4f6fc;
+            --bg-page:       #eef0f8;
             --bg-card:       #ffffff;
             --bg-card2:      #f8fafc;
             --bg-input:      #ffffff;
@@ -50,8 +51,9 @@
             --search-bg:     #22263a;
         }
 
-        * { font-family: 'Inter', sans-serif; }
-        body { background: var(--bg-page); padding-bottom: 90px; transition: background 0.3s; }
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { margin: 0; padding: 0; }
+        body { background: var(--bg-page); transition: background 0.3s; }
 
         /* Cards & Surfaces */
         .bg-white  { background: var(--bg-card)  !important; }
@@ -231,38 +233,53 @@
 
 <body class="antialiased">
     <div id="toastContainer"></div>
-    <div id="app" class="max-w-4xl mx-auto px-4 py-4">
+    <div id="app" class="max-w-4xl mx-auto">
         
-        <header class="bg-white rounded-2xl shadow-sm p-4 flex justify-between items-center mb-6 sticky top-0 z-50 backdrop-blur-sm bg-white/90">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-store text-pink-500 text-xl"></i>
-                <h1 class="text-lg font-bold text-gray-800">Pink<span class="text-pink-500">kart</span></h1>
+        <header class="bg-white shadow-sm px-4 py-3 flex justify-between items-center mb-4 sticky top-0 z-50 backdrop-blur-sm bg-white/95" style="border-radius:0;">
+            <!-- Left: Avatar + Name -->
+            <div class="flex items-center gap-3">
+                <label class="cursor-pointer relative shrink-0 block" title="Change profile photo" style="width:44px;height:44px;" @click.prevent="$refs.avatarInput.click()">
+                    <div class="w-11 h-11 rounded-full overflow-hidden border-2 border-pink-200 flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100 shadow-sm">
+                        <img v-if="userAvatarUrl" :src="userAvatarUrl" class="w-full h-full object-cover">
+                        <span v-else-if="loggedInUser" class="text-pink-600 font-black text-base">{{ loggedInUser.name.charAt(0).toUpperCase() }}</span>
+                        <i v-else class="fas fa-user text-pink-400 text-lg"></i>
+                    </div>
+                    <div v-if="isUploadingAvatar" class="absolute inset-0 bg-white/70 rounded-full flex items-center justify-center"><i class="fas fa-spinner fa-spin text-pink-500 text-xs"></i></div>
+                    <input type="file" accept="image/*" @change="handleAvatarUpload" class="hidden" ref="avatarInput">
+                    <div v-if="!isUploadingAvatar" class="absolute bottom-0 right-0 w-4 h-4 bg-pink-500 rounded-full flex items-center justify-center border border-white">
+                        <i class="fas fa-camera text-white" style="font-size:7px;"></i>
+                    </div>
+                </label>
+                <div>
+                    <p class="text-xs text-gray-400 font-medium leading-tight">Welcome 👋</p>
+                    <p v-if="loggedInUser" class="text-sm font-bold text-gray-800 leading-tight max-w-[120px] truncate">{{ loggedInUser.name }}</p>
+                    <div v-else class="flex items-center gap-1 mt-0.5">
+                        <button @click="openAuth('login')" class="text-[11px] bg-pink-500 text-white px-2.5 py-0.5 rounded-full font-bold">Login</button>
+                        <button @click="openAuth('signup')" class="text-[11px] border border-pink-400 text-pink-600 px-2.5 py-0.5 rounded-full font-bold">Sign Up</button>
+                    </div>
+                </div>
             </div>
+
+            <!-- Right: Theme toggle + Wishlist + Cart -->
             <div class="flex items-center gap-2">
                 <!-- Dark/Light Theme Toggle -->
                 <button @click="toggleTheme" class="theme-toggle-btn" :title="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
                     <span class="knob">{{ isDark ? '🌙' : '☀️' }}</span>
                 </button>
-                <div v-if="loggedInUser" class="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-full text-xs font-semibold text-blue-800">
-                    <label class="cursor-pointer relative" title="Change profile photo">
-                        <div class="w-7 h-7 rounded-full overflow-hidden avatar-ring flex items-center justify-center bg-blue-200 shrink-0">
-                            <img v-if="userAvatarUrl" :src="userAvatarUrl" class="w-full h-full object-cover">
-                            <span v-else class="text-blue-700 font-black text-xs">{{ loggedInUser.name.charAt(0).toUpperCase() }}</span>
-                        </div>
-                        <div v-if="isUploadingAvatar" class="absolute inset-0 bg-white/70 rounded-full flex items-center justify-center"><i class="fas fa-spinner fa-spin text-blue-600 text-[9px]"></i></div>
-                        <input type="file" accept="image/*" @change="handleAvatarUpload" class="hidden">
-                    </label>
-                    <span class="max-w-[80px] truncate">{{ loggedInUser.name }}</span>
-                    <button @click="logout" class="ml-1 text-red-500 hover:text-red-700 font-bold"><i class="fas fa-sign-out-alt"></i></button>
-                </div>
-                <div v-else class="flex items-center gap-1.5">
-                    <button @click="openAuth('login')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
-                        <i class="fas fa-sign-in-alt"></i> Login
-                    </button>
-                    <button @click="openAuth('signup')" class="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-full font-bold transition flex items-center gap-1">
-                        <i class="fas fa-user-plus"></i> Sign Up
-                    </button>
-                </div>
+                <!-- Wishlist icon -->
+                <button @click="activeTab='wishlist'; history.pushState({page:'tab'},'')" class="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-pink-50 transition">
+                    <i :class="wishlist.length ? 'fas fa-heart text-red-500' : 'far fa-heart text-gray-500'" class="text-xl"></i>
+                    <span v-if="wishlist.length" class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">{{ wishlist.length }}</span>
+                </button>
+                <!-- Cart icon -->
+                <button @click="activeTab='cart'; history.pushState({page:'tab'},'')" class="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-blue-50 transition">
+                    <i class="fas fa-shopping-cart text-gray-600 text-xl"></i>
+                    <span v-if="cartItems && cartItems.length" class="absolute -top-0.5 -right-0.5 bg-purple-600 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">{{ cartItems.length }}</span>
+                </button>
+                <!-- Logout (only when logged in) -->
+                <button v-if="loggedInUser" @click="logout" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 transition" title="Logout">
+                    <i class="fas fa-sign-out-alt text-red-400 text-sm"></i>
+                </button>
             </div>
         </header>
 
@@ -449,19 +466,19 @@
                         <!-- Info -->
                         <div class="px-2.5 pt-2 pb-3">
                             <!-- Name -->
-                            <p class="text-gray-800 text-xs font-medium leading-snug mb-1.5" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ product.name }}</p>
+                            <p class="text-gray-800 text-[13px] font-semibold leading-snug mb-1" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ product.name }}</p>
 
-                            <!-- Price + strikethrough + % off -->
-                            <div class="flex items-center gap-1 flex-wrap mb-0.5">
-                                <span class="text-base font-black text-gray-900">₹{{ getEffectivePrice(product) }}</span>
+                            <!-- Price + strikethrough + % off — Meesho style -->
+                            <div class="flex items-baseline gap-1.5 flex-wrap mb-0.5">
+                                <span class="text-[17px] font-black text-gray-900">₹{{ getEffectivePrice(product) }}</span>
                                 <span v-if="getEffectiveOriginal(product) && getEffectiveOriginal(product) > getEffectivePrice(product)"
-                                      class="text-xs text-gray-400 line-through">{{ getEffectiveOriginal(product) }}</span>
+                                      class="text-[13px] text-gray-400 line-through font-medium">{{ getEffectiveOriginal(product) }}</span>
                                 <span v-if="getTotalDiscount(product) > 0"
-                                      class="text-xs font-bold text-green-600">{{ getTotalDiscount(product) }}% off</span>
+                                      class="text-[13px] font-bold text-green-600">{{ getTotalDiscount(product) }}% off</span>
                             </div>
 
                             <!-- COD price -->
-                            <p class="text-xs text-gray-500 mb-2">₹{{ getEffectiveOriginal(product) || Number(product.price).toFixed(0) }} with COD</p>
+                            <p class="text-[12px] text-pink-500 font-medium mb-1.5">₹{{ getEffectiveOriginal(product) || Number(product.price).toFixed(0) }} with COD</p>
 
                             <!-- Rating -->
                             <div v-if="getProductAvgRating(product.id)" class="flex items-center gap-1.5">
@@ -856,6 +873,164 @@
             </div>
             <!-- ===== END SUGGESTED FOR YOU ===== -->
         </div>
+
+        <!-- ===== CATEGORIES PAGE (Meesho/Flipkart Style) ===== -->
+        <div v-show="activeTab === 'categories'">
+            <div class="mb-3">
+                <h2 class="text-base font-black text-gray-900 uppercase tracking-widest">Categories</h2>
+            </div>
+            <div class="flex gap-0" style="height: calc(100vh - 160px); background: #f5f6fb; border-radius: 16px; overflow: hidden;">
+                
+                <!-- LEFT SIDEBAR — Firebase categories -->
+                <div class="flex flex-col overflow-y-auto no-scrollbar" style="width:105px; min-width:105px; background:#ffffff; border-right:1px solid #eee;">
+
+                    <!-- "All" special entry -->
+                    <div @click="activeCatLeft = 'All'"
+                         :class="activeCatLeft === 'All' ? 'border-l-4 border-purple-600 bg-purple-50' : 'border-l-4 border-transparent bg-white'"
+                         class="flex flex-col items-center justify-center py-4 px-1 cursor-pointer transition-all duration-150 border-b border-gray-50 gap-2">
+                        <div :class="activeCatLeft==='All' ? 'bg-purple-100' : 'bg-gray-100'"
+                             class="w-14 h-14 rounded-full flex items-center justify-center transition">
+                            <i class="fas fa-th-large text-2xl" :style="activeCatLeft==='All'?'color:#7c3aed':'color:#9ca3af'"></i>
+                        </div>
+                        <span :class="activeCatLeft==='All' ? 'text-purple-700 font-black' : 'text-gray-600 font-semibold'"
+                              class="text-[11px] text-center leading-tight">All</span>
+                    </div>
+
+                    <!-- Dynamic categories from Firebase -->
+                    <div v-for="cat in availableCategories.filter(c => c !== 'All')" :key="cat"
+                         @click="activeCatLeft = cat"
+                         :class="activeCatLeft === cat
+                            ? 'border-l-4 border-purple-600 bg-purple-50'
+                            : 'border-l-4 border-transparent bg-white'"
+                         class="flex flex-col items-center justify-center py-4 px-1 cursor-pointer transition-all duration-150 border-b border-gray-50 gap-2">
+                        <div :class="activeCatLeft === cat ? 'bg-purple-100' : 'bg-gray-100'"
+                             class="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden shrink-0 transition">
+                            <img v-if="categoryImages[cat]"
+                                 :src="getDriveImageUrl(categoryImages[cat])"
+                                 class="w-full h-full object-cover rounded-full"
+                                 onerror="this.style.display='none'; this.$el.nextElementSibling && (this.$el.nextElementSibling.style.display='flex')">
+                            <i v-if="!categoryImages[cat]" :class="getCategoryIcon(cat)"
+                               :style="activeCatLeft===cat?'color:#7c3aed':'color:#9ca3af'"
+                               class="text-2xl"></i>
+                        </div>
+                        <span :class="activeCatLeft === cat ? 'text-purple-700 font-black' : 'text-gray-600 font-semibold'"
+                              class="text-[11px] text-center leading-tight">{{ cat }}</span>
+                    </div>
+
+                    <!-- Empty state for sidebar -->
+                    <div v-if="availableCategories.filter(c=>c!=='All').length === 0" class="flex flex-col items-center justify-center py-8 px-2 text-center text-gray-300">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                        <span class="text-[10px]">Loading...</span>
+                    </div>
+                </div>
+
+                <!-- RIGHT CONTENT -->
+                <div class="flex-1 overflow-y-auto no-scrollbar px-3 py-3" style="background:#f5f6fb;">
+
+                    <!-- ALL categories overview -->
+                    <div v-if="activeCatLeft === 'All'">
+                        <div v-for="cat in availableCategories.filter(c=>c!=='All')" :key="'all_'+cat" class="mb-6">
+                            <!-- Category heading row -->
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 rounded-full overflow-hidden bg-purple-100 flex items-center justify-center shrink-0">
+                                        <img v-if="categoryImages[cat]" :src="getDriveImageUrl(categoryImages[cat])" class="w-full h-full object-cover" onerror="this.style.display='none'">
+                                        <i v-if="!categoryImages[cat]" :class="getCategoryIcon(cat)" class="text-sm text-purple-600"></i>
+                                    </div>
+                                    <h3 class="text-sm font-black text-gray-900">{{ cat }}</h3>
+                                </div>
+                                <button @click="activeCatLeft=cat" class="text-[11px] text-purple-600 font-bold">See all ›</button>
+                            </div>
+                            <!-- Products in this category (first 6) -->
+                            <div class="grid grid-cols-3 gap-2">
+                                <div v-for="product in products.filter(p=>p.category===cat).slice(0,6)" :key="'ao_'+product.id"
+                                     @click="goToCategoryProducts(cat); viewProductDetail(product)"
+                                     class="flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition">
+                                    <div class="w-full rounded-xl overflow-hidden bg-white shadow-sm border border-gray-100" style="aspect-ratio:1/1;">
+                                        <img :src="getDriveImageUrl(product.images && product.images.length ? product.images[0] : (product.image||''))"
+                                             class="w-full h-full object-contain p-1"
+                                             onerror="this.src='https://placehold.co/200x200?text=P'">
+                                    </div>
+                                    <span class="text-[10px] text-center text-gray-600 leading-tight font-medium" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ product.name }}</span>
+                                </div>
+                                <!-- "View All" tile if more than 6 -->
+                                <div v-if="products.filter(p=>p.category===cat).length > 6"
+                                     @click="goToCategoryProducts(cat)"
+                                     class="flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition">
+                                    <div class="w-full rounded-xl bg-purple-50 border-2 border-purple-200 flex items-center justify-center" style="aspect-ratio:1/1;">
+                                        <div class="text-center">
+                                            <i class="fas fa-plus text-purple-500 text-xl mb-1 block"></i>
+                                            <span class="text-[10px] text-purple-600 font-black">{{ products.filter(p=>p.category===cat).length - 6 }}+ more</span>
+                                        </div>
+                                    </div>
+                                    <span class="text-[10px] text-center text-purple-600 font-bold leading-tight">View All</span>
+                                </div>
+                            </div>
+                            <div class="h-px bg-gray-200 mt-4"></div>
+                        </div>
+
+                        <!-- No categories yet -->
+                        <div v-if="availableCategories.filter(c=>c!=='All').length === 0" class="flex flex-col items-center justify-center py-16 text-gray-300">
+                            <i class="fas fa-border-all text-5xl mb-3"></i>
+                            <p class="text-sm font-bold text-gray-400">No categories yet</p>
+                            <p class="text-xs text-gray-300 mt-1">Admin se categories add karwayein</p>
+                        </div>
+                    </div>
+
+                    <!-- SINGLE CATEGORY — products grid -->
+                    <div v-else-if="activeCatLeft !== 'All'">
+                        <!-- Header -->
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">CATEGORY</span>
+                            <div class="flex-1 h-px bg-gray-200"></div>
+                        </div>
+                        <h3 class="text-xl font-black text-gray-900 mb-3">{{ activeCatLeft }}</h3>
+
+                        <!-- Product count -->
+                        <p class="text-xs text-gray-400 mb-3 font-medium">
+                            <i class="fas fa-layer-group mr-1 text-purple-400"></i>
+                            {{ products.filter(p=>p.category===activeCatLeft).length }} products found
+                        </p>
+
+                        <!-- Products grid -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <div v-for="product in products.filter(p=>p.category===activeCatLeft)" :key="'cp_'+product.id"
+                                 @click="goToCategoryProducts(activeCatLeft); viewProductDetail(product)"
+                                 class="flex flex-col items-center gap-1.5 cursor-pointer active:scale-95 transition">
+                                <div class="w-full rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 relative" style="aspect-ratio:1/1;">
+                                    <img :src="getDriveImageUrl(product.images && product.images.length ? product.images[0] : (product.image||''))"
+                                         class="w-full h-full object-contain p-1.5"
+                                         onerror="this.src='https://placehold.co/200x200?text=P'">
+                                    <!-- Out of stock overlay -->
+                                    <div v-if="product.stockStatus && product.stockStatus !== 'In stock'"
+                                         class="absolute inset-0 bg-white/60 flex items-center justify-center">
+                                        <span class="text-red-600 text-[8px] font-black border border-red-500 px-1 py-0.5 bg-white rotate-[-10deg]">OUT OF STOCK</span>
+                                    </div>
+                                    <!-- Badge -->
+                                    <div v-if="product.badge" class="absolute top-1 left-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">{{ product.badge }}</div>
+                                    <!-- Wishlist -->
+                                    <button @click.stop="toggleWishlist(product)" class="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center">
+                                        <i :class="isInWishlist(product) ? 'fas fa-heart text-red-500' : 'far fa-heart text-gray-400'" class="text-xs"></i>
+                                    </button>
+                                </div>
+                                <div class="w-full">
+                                    <p class="text-[11px] text-center text-gray-700 font-semibold leading-tight mb-0.5" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ product.name }}</p>
+                                    <p class="text-[12px] text-center font-black text-gray-900">₹{{ getEffectivePrice(product) }}</p>
+                                    <p v-if="getTotalDiscount(product)>0" class="text-[10px] text-center text-green-600 font-bold">{{ getTotalDiscount(product) }}% off</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Empty state for this category -->
+                        <div v-if="products.filter(p=>p.category===activeCatLeft).length === 0" class="flex flex-col items-center justify-center py-16 text-gray-300">
+                            <i class="fas fa-box-open text-5xl mb-3"></i>
+                            <p class="text-sm font-bold text-gray-400">No products in this category</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ===== END CATEGORIES PAGE ===== -->
 
         <div v-show="activeTab === 'orders'">
             <div class="mb-4"><h2 class="text-lg font-bold">📦 My Orders History Logs</h2></div>
@@ -1268,74 +1443,270 @@
 
         <div v-if="showFullScreenImage && selectedProduct" class="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center touch-none" @click="showFullScreenImage = false"><button class="absolute top-6 right-6 text-white text-2xl z-[10000] bg-white/20 w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/40 backdrop-blur-sm transition" @click="showFullScreenImage = false"><i class="fas fa-times"></i></button><img :src="getProductSliderImages()[currentProductImageIndex]" class="max-w-[95%] max-h-[90vh] object-contain pointer-events-auto" @click.stop alt="Full Screen Product"><button v-if="getProductSliderImages().length > 1" @click.stop="prevProductImage" class="absolute left-4 top-1/2 -translate-y-1/2 text-white text-xl w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded-full backdrop-blur-sm"><i class="fas fa-chevron-left"></i></button><button v-if="getProductSliderImages().length > 1" @click.stop="nextProductImage" class="absolute right-4 top-1/2 -translate-y-1/2 text-white text-xl w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded-full backdrop-blur-sm"><i class="fas fa-chevron-right"></i></button></div>
 
-        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-2.5 px-6 flex justify-around items-center z-40 shadow-lg max-w-4xl mx-auto rounded-t-2xl">
-            <button @click="activeTab='products'; selectedProduct=null;" :class="activeTab==='products' ? 'text-blue-600 font-bold' : 'text-gray-400'" class="flex flex-col items-center gap-1"><i class="fas fa-th-large text-lg"></i><span class="text-[10px]">Product</span></button>
-            <button @click="if(activeTab!=='wishlist'){activeTab='wishlist'; history.pushState({page:'tab'}, '');}" :class="activeTab==='wishlist' ? 'text-blue-600 font-bold' : 'text-gray-400'" class="flex flex-col items-center gap-1 relative"><i class="fas fa-heart text-lg"></i><span class="text-[10px]">Wishlist</span><span v-if="wishlist.length" class="absolute -top-1 right-1 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{{ wishlist.length }}</span></button>
-            <button @click="if(activeTab!=='cart'){activeTab='cart'; history.pushState({page:'tab'}, '');}" :class="activeTab==='cart' ? 'text-blue-600 font-bold' : 'text-gray-400'" class="flex flex-col items-center gap-1 relative"><i class="fas fa-shopping-cart text-lg"></i><span class="text-[10px]">Cart</span><span v-if="cartItems.length" class="absolute -top-1 right-2 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{{ cartItems.length }}</span></button>
-            <button @click="if(activeTab!=='orders'){activeTab='orders'; history.pushState({page:'tab'}, '');}" :class="activeTab==='orders' ? 'text-blue-600 font-bold' : 'text-gray-400'" class="flex flex-col items-center gap-1"><i class="fas fa-box text-lg"></i><span class="text-[10px]">Order</span></button>
-            <button @click="if(activeTab!=='profile'){activeTab='profile'; fetchProfile(); history.pushState({page:'tab'}, '');}" :class="activeTab==='profile' ? 'text-pink-600 font-bold' : 'text-gray-400'" class="flex flex-col items-center gap-1 relative">
-                <i class="fas fa-user-circle text-lg"></i><span class="text-[10px]">Profile</span>
-                <span v-if="loggedInUser" class="absolute -top-1 right-0 w-2 h-2 bg-green-500 rounded-full border border-white"></span>
+        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-2 px-2 flex justify-around items-center z-40 shadow-lg max-w-4xl mx-auto rounded-t-2xl">
+            <button @click="activeTab='products'; selectedProduct=null;" :class="activeTab==='products' ? 'text-blue-600 font-bold' : 'text-gray-400'" class="flex flex-col items-center gap-0.5 flex-1"><i class="fas fa-th-large text-xl"></i><span class="text-[10px]">Product</span></button>
+            <button @click="if(activeTab!=='wishlist'){activeTab='wishlist'; history.pushState({page:'tab'}, '');}" :class="activeTab==='wishlist' ? 'text-blue-600 font-bold' : 'text-gray-400'" class="flex flex-col items-center gap-0.5 relative flex-1"><i class="fas fa-heart text-xl"></i><span class="text-[10px]">Wishlist</span><span v-if="wishlist.length" class="absolute -top-1 right-3 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{{ wishlist.length }}</span></button>
+            <!-- Categories - center prominent -->
+            <button @click="if(activeTab!=='categories'){activeTab='categories'; activeCatLeft='All'; history.pushState({page:'tab'}, '');}" :class="activeTab==='categories' ? 'text-purple-600 font-bold' : 'text-gray-400'" class="flex flex-col items-center gap-0.5 flex-1 relative">
+                <div :class="activeTab==='categories' ? 'bg-purple-100' : ''" class="w-12 h-7 flex items-center justify-center rounded-full transition">
+                    <i class="fas fa-border-all text-xl"></i>
+                </div>
+                <span class="text-[10px]">Categories</span>
+            </button>
+            <button @click="if(activeTab!=='orders'){activeTab='orders'; history.pushState({page:'tab'}, '');}" :class="activeTab==='orders' ? 'text-blue-600 font-bold' : 'text-gray-400'" class="flex flex-col items-center gap-0.5 flex-1"><i class="fas fa-box text-xl"></i><span class="text-[10px]">Order</span></button>
+            <button @click="if(activeTab!=='profile'){activeTab='profile'; fetchProfile(); history.pushState({page:'tab'}, '');}" :class="activeTab==='profile' ? 'text-pink-600 font-bold' : 'text-gray-400'" class="flex flex-col items-center gap-0.5 relative flex-1">
+                <i class="fas fa-user-circle text-xl"></i><span class="text-[10px]">Profile</span>
+                <span v-if="loggedInUser" class="absolute top-0 right-3 w-2 h-2 bg-green-500 rounded-full border border-white"></span>
             </button>
         </div>
 
-        <div v-if="showLoginModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-                <div class="flex border-b">
-                    <button @click="authMode='login'" :class="authMode==='login' ? 'border-b-2 border-blue-600 text-blue-600 font-bold' : 'text-gray-400 font-semibold'" class="flex-1 py-3.5 text-sm transition flex items-center justify-center gap-1.5">
-                        <i class="fas fa-sign-in-alt"></i> Login
+        <!-- ===== BEAUTIFUL LOGIN / SIGNUP MODAL ===== -->
+        <div v-if="showLoginModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);">
+            <div class="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden" style="animation:pkModalIn 0.4s cubic-bezier(0.34,1.3,0.64,1) both;">
+
+                <!-- ===== HEADER GRADIENT ===== -->
+                <div style="background:linear-gradient(135deg,#f857a6 0%,#ff5858 100%);padding:28px 24px 22px;position:relative;text-align:center;">
+                    <!-- Close button -->
+                    <button @click="showLoginModal=false" style="position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.25);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;">
+                        <i class="fas fa-times"></i>
                     </button>
-                    <button @click="authMode='signup'" :class="authMode==='signup' ? 'border-b-2 border-green-600 text-green-600 font-bold' : 'text-gray-400 font-semibold'" class="flex-1 py-3.5 text-sm transition flex items-center justify-center gap-1.5">
-                        <i class="fas fa-user-plus"></i> Sign Up
-                    </button>
-                    <button @click="showLoginModal=false" class="px-4 text-gray-400 hover:text-gray-600 text-lg"><i class="fas fa-times"></i></button>
+                    <!-- Icon -->
+                    <div style="width:60px;height:60px;border-radius:18px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;box-shadow:0 4px 16px rgba(0,0,0,0.15);">
+                        <span v-if="authMode==='login'">🛍️</span>
+                        <span v-else>✨</span>
+                    </div>
+                    <h2 style="color:white;font-size:20px;font-weight:900;margin:0 0 3px;letter-spacing:-0.3px;">
+                        <span v-if="authMode==='login'">Pinkkart Login</span>
+                        <span v-else>Pinkkart Sign Up</span>
+                    </h2>
+                    <p style="color:rgba(255,255,255,0.82);font-size:12px;margin:0;">
+                        <span v-if="authMode==='login'">Apna account mein login karein</span>
+                        <span v-else>Naya account create karein</span>
+                    </p>
+                    <!-- Tab pills -->
+                    <div style="display:flex;gap:8px;margin-top:16px;background:rgba(255,255,255,0.18);border-radius:30px;padding:4px;">
+                        <button @click="authMode='login'; emailAuthError=''"
+                            :style="authMode==='login' ? 'background:white;color:#f857a6;box-shadow:0 2px 8px rgba(0,0,0,0.12);' : 'background:transparent;color:rgba(255,255,255,0.85);'"
+                            style="flex:1;border:none;border-radius:24px;padding:7px 0;font-size:12px;font-weight:800;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:5px;">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </button>
+                        <button @click="authMode='signup'; emailAuthError=''"
+                            :style="authMode==='signup' ? 'background:white;color:#f857a6;box-shadow:0 2px 8px rgba(0,0,0,0.12);' : 'background:transparent;color:rgba(255,255,255,0.85);'"
+                            style="flex:1;border:none;border-radius:24px;padding:7px 0;font-size:12px;font-weight:800;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:5px;">
+                            <i class="fas fa-user-plus"></i> Sign Up
+                        </button>
+                    </div>
                 </div>
 
-                <div v-if="authMode==='login'" class="p-6 space-y-4">
-                    <p class="text-xs text-gray-500 text-center">Enter your registered Name & Mobile to login.</p>
+                <!-- ===== BODY ===== -->
+                <div style="padding:22px 22px 20px;max-height:65vh;overflow-y:auto;">
+
+                <!-- Checkout context banner -->
+                <div v-if="pendingAction === 'checkout'" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #fcd34d;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:11px;font-weight:700;color:#92400e;display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:18px;">🛒</span>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Your Name</label>
-                        <div class="relative">
-                            <i class="fas fa-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                            <input type="text" v-model="loginForm.name" placeholder="Enter your full name" class="w-full pl-9 pr-3 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-blue-400 border-gray-200">
-                        </div>
+                        <p style="font-weight:900;font-size:12px;color:#78350f;">Order place karne ke liye account chahiye!</p>
+                        <p style="font-weight:600;color:#92400e;margin-top:2px;">Sign up karein ya login karein — sirf 30 seconds lagenge ✨</p>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Mobile Number</label>
-                        <div class="relative">
-                            <i class="fas fa-mobile-alt absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                            <input type="tel" v-model="loginForm.phone" placeholder="Enter 10-digit mobile number" maxlength="10" class="w-full pl-9 pr-3 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-blue-400 border-gray-200">
-                        </div>
-                    </div>
-                    <button @click="submitLogin" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-3 rounded-xl font-bold text-sm transition shadow-md flex items-center justify-center gap-2">
-                        <i class="fas fa-sign-in-alt"></i> Login to Account
-                    </button>
-                    <p class="text-center text-xs text-gray-400">New here? <span @click="authMode='signup'" class="text-green-600 font-bold cursor-pointer underline">Create an account</span></p>
                 </div>
 
-                <div v-if="authMode==='signup'" class="p-6 space-y-4">
-                    <p class="text-xs text-gray-500 text-center">Create your free account with Name & Mobile.</p>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Full Name</label>
-                        <div class="relative">
-                            <i class="fas fa-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                            <input type="text" v-model="signupForm.name" placeholder="Enter your full name" class="w-full pl-9 pr-3 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-green-400 border-gray-200">
-                        </div>
+                <!-- Firebase connected badge (signup only) -->
+                    <div v-if="authMode==='signup'" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:9px 12px;margin-bottom:16px;font-size:11px;font-weight:700;color:#16a34a;display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-check-circle"></i> Firebase Connected! Data save hoga database mein
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Mobile Number</label>
-                        <div class="relative">
-                            <i class="fas fa-mobile-alt absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                            <input type="tel" v-model="signupForm.phone" placeholder="Enter 10-digit mobile number" maxlength="10" class="w-full pl-9 pr-3 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-green-400 border-gray-200">
-                        </div>
+
+                    <!-- Error -->
+                    <div v-if="emailAuthError" style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:9px 12px;margin-bottom:14px;font-size:11px;font-weight:700;color:#dc2626;display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-exclamation-circle"></i> {{ emailAuthError }}
                     </div>
-                    <button @click="submitSignUp" class="w-full bg-green-600 hover:bg-green-700 active:scale-95 text-white py-3 rounded-xl font-bold text-sm transition shadow-md flex items-center justify-center gap-2">
-                        <i class="fas fa-user-plus"></i> Create Account
-                    </button>
-                    <p class="text-center text-xs text-gray-400">Already have an account? <span @click="authMode='login'" class="text-blue-600 font-bold cursor-pointer underline">Login here</span></p>
+
+                    <!-- ===== LOGIN FORM ===== -->
+                    <div v-if="authMode==='login'" style="display:flex;flex-direction:column;gap:14px;">
+
+                        <!-- Sub-toggle -->
+                        <div style="display:flex;gap:8px;">
+                            <button @click="authSubMode='phone'"
+                                :style="authSubMode==='phone' ? 'background:linear-gradient(135deg,#f857a6,#ff5858);color:white;border-color:transparent;' : 'background:#f9fafb;color:#6b7280;border-color:#e5e7eb;'"
+                                style="flex:1;border:1.5px solid;border-radius:10px;padding:8px 0;font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.2s;">
+                                <i class="fas fa-mobile-alt"></i> Mobile
+                            </button>
+                            <button @click="authSubMode='email'"
+                                :style="authSubMode==='email' ? 'background:linear-gradient(135deg,#f857a6,#ff5858);color:white;border-color:transparent;' : 'background:#f9fafb;color:#6b7280;border-color:#e5e7eb;'"
+                                style="flex:1;border:1.5px solid;border-radius:10px;padding:8px 0;font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.2s;">
+                                <i class="fas fa-envelope"></i> Email
+                            </button>
+                        </div>
+
+                        <!-- LOGIN PHONE -->
+                        <template v-if="authSubMode==='phone'">
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+                                    <span>👤</span> FULL NAME
+                                </p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-user" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input type="text" v-model="loginForm.name" placeholder="Aapka pura naam" style="width:100%;padding:12px 14px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;transition:border-color 0.2s,box-shadow 0.2s;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                </div>
+                            </div>
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+                                    <span>📱</span> MOBILE NUMBER
+                                </p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-mobile-alt" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input type="tel" v-model="loginForm.phone" placeholder="10-digit number" maxlength="10" style="width:100%;padding:12px 14px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;transition:border-color 0.2s,box-shadow 0.2s;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                </div>
+                            </div>
+                            <button @click="submitLogin" style="width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(90deg,#f857a6,#ff5858);color:white;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 20px rgba(248,87,166,0.38);transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </button>
+                        </template>
+
+                        <!-- LOGIN EMAIL -->
+                        <template v-if="authSubMode==='email'">
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+                                    <span>📧</span> EMAIL ADDRESS
+                                </p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-envelope" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input type="email" v-model="emailForm.email" placeholder="email@gmail.com" style="width:100%;padding:12px 14px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                </div>
+                            </div>
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;">
+                                    <span>🔒</span> PASSWORD
+                                </p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-lock" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input :type="showEmailPassword ? 'text' : 'password'" v-model="emailForm.password" placeholder="Your password" style="width:100%;padding:12px 40px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                    <button type="button" @click="showEmailPassword=!showEmailPassword" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;font-size:13px;padding:4px;">
+                                        <i :class="showEmailPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button @click="submitEmailLogin" :disabled="emailAuthLoading" style="width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(90deg,#f857a6,#ff5858);color:white;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 20px rgba(248,87,166,0.38);transition:transform 0.15s;opacity:1;" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">
+                                <i v-if="emailAuthLoading" class="fas fa-spinner fa-spin"></i>
+                                <i v-else class="fas fa-sign-in-alt"></i>
+                                {{ emailAuthLoading ? 'Login ho raha hai...' : 'Login with Email' }}
+                            </button>
+                        </template>
+
+                        <!-- Divider -->
+                        <div style="height:1px;background:#f0f0f0;margin:2px 0;"></div>
+                        <p style="text-align:center;font-size:12px;color:#9ca3af;">
+                            Account nahi hai? <span @click="authMode='signup'; emailAuthError=''" style="color:#f857a6;font-weight:800;cursor:pointer;">Sign up karo</span>
+                        </p>
+                    </div>
+
+                    <!-- ===== SIGNUP FORM ===== -->
+                    <div v-if="authMode==='signup'" style="display:flex;flex-direction:column;gap:14px;">
+
+                        <!-- Sub-toggle -->
+                        <div style="display:flex;gap:8px;">
+                            <button @click="authSubMode='phone'"
+                                :style="authSubMode==='phone' ? 'background:linear-gradient(135deg,#f857a6,#ff5858);color:white;border-color:transparent;' : 'background:#f9fafb;color:#6b7280;border-color:#e5e7eb;'"
+                                style="flex:1;border:1.5px solid;border-radius:10px;padding:8px 0;font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.2s;">
+                                <i class="fas fa-mobile-alt"></i> Mobile
+                            </button>
+                            <button @click="authSubMode='email'"
+                                :style="authSubMode==='email' ? 'background:linear-gradient(135deg,#f857a6,#ff5858);color:white;border-color:transparent;' : 'background:#f9fafb;color:#6b7280;border-color:#e5e7eb;'"
+                                style="flex:1;border:1.5px solid;border-radius:10px;padding:8px 0;font-size:11px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.2s;">
+                                <i class="fas fa-envelope"></i> Email
+                            </button>
+                        </div>
+
+                        <!-- SIGNUP PHONE -->
+                        <template v-if="authSubMode==='phone'">
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;"><span>👤</span> FULL NAME</p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-user" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input type="text" v-model="signupForm.name" placeholder="Aapka pura naam" style="width:100%;padding:12px 14px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                </div>
+                            </div>
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;"><span>📱</span> MOBILE NUMBER</p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-mobile-alt" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input type="tel" v-model="signupForm.phone" placeholder="10-digit number" maxlength="10" style="width:100%;padding:12px 14px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                </div>
+                            </div>
+                            <button @click="submitSignUp" style="width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(90deg,#f857a6,#ff5858);color:white;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 20px rgba(248,87,166,0.38);transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">
+                                <i class="fas fa-user-plus"></i> Create Account
+                            </button>
+                        </template>
+
+                        <!-- SIGNUP EMAIL -->
+                        <template v-if="authSubMode==='email'">
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;"><span>👤</span> FULL NAME</p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-user" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input type="text" v-model="emailSignupForm.name" placeholder="Aapka pura naam" style="width:100%;padding:12px 14px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                </div>
+                            </div>
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;"><span>📱</span> MOBILE NUMBER</p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-mobile-alt" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input type="tel" v-model="emailSignupForm.mobile" placeholder="10-digit number" maxlength="10" style="width:100%;padding:12px 14px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                </div>
+                            </div>
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;"><span>📧</span> EMAIL ADDRESS</p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-envelope" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input type="email" v-model="emailSignupForm.email" placeholder="email@gmail.com" style="width:100%;padding:12px 14px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                </div>
+                            </div>
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;"><span>🔒</span> PASSWORD</p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-lock" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input :type="showEmailPassword ? 'text' : 'password'" v-model="emailSignupForm.password" placeholder="Minimum 6 characters" style="width:100%;padding:12px 40px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                    <button type="button" @click="showEmailPassword=!showEmailPassword" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9ca3af;font-size:13px;padding:4px;">
+                                        <i :class="showEmailPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <p style="font-size:10px;font-weight:800;color:#374151;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;"><span>✔️</span> CONFIRM PASSWORD</p>
+                                <div style="position:relative;">
+                                    <i class="fas fa-lock" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#d1d5db;font-size:12px;"></i>
+                                    <input :type="showEmailPassword ? 'text' : 'password'" v-model="emailSignupForm.confirmPassword" placeholder="Password confirm karein" style="width:100%;padding:12px 40px 12px 36px;border:1.5px solid #e5e7eb;border-radius:13px;font-size:13px;background:#f9fafb;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#f857a6';this.style.boxShadow='0 0 0 3px rgba(248,87,166,0.12)'" onblur="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+                                </div>
+                            </div>
+                            <!-- T&C -->
+                            <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:#6b7280;cursor:pointer;">
+                                <input type="checkbox" v-model="emailSignupForm.terms" style="width:15px;height:15px;accent-color:#f857a6;cursor:pointer;">
+                                I agree to <span style="color:#f857a6;font-weight:700;cursor:pointer;">Terms &amp; Conditions</span>
+                            </label>
+                            <button @click="submitEmailSignUp" :disabled="emailAuthLoading" style="width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(90deg,#f857a6,#ff5858);color:white;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 20px rgba(248,87,166,0.38);transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">
+                                <i v-if="emailAuthLoading" class="fas fa-spinner fa-spin"></i>
+                                <i v-else class="fas fa-user-plus"></i>
+                                {{ emailAuthLoading ? 'Creating...' : 'Create Account' }}
+                            </button>
+                        </template>
+
+                        <!-- Divider -->
+                        <div style="height:1px;background:#f0f0f0;margin:2px 0;"></div>
+                        <p style="text-align:center;font-size:12px;color:#9ca3af;">
+                            Already have account? <span @click="authMode='login'; emailAuthError=''" style="color:#f857a6;font-weight:800;cursor:pointer;">Login karo</span>
+                        </p>
+                    </div>
+
                 </div>
             </div>
         </div>
+        <!-- ===== END LOGIN/SIGNUP MODAL ===== -->
+
+        <style>
+        @keyframes pkModalIn {
+            from { opacity:0; transform:scale(0.85) translateY(30px); }
+            to   { opacity:1; transform:scale(1) translateY(0); }
+        }
+        </style>
 
         <!-- ===== CHECKOUT MODAL ===== -->
         <div v-if="showCheckoutModal" class="fixed inset-0 bg-black/60 flex items-end justify-center z-50" @click.self="showCheckoutModal = false">
@@ -1618,10 +1989,19 @@
         new Vue({
             el: '#app',
             data: {
+                // Categories Page
+                activeCatLeft: 'All',
                 activeTab: 'products',
                 showLoginModal: false,
+                authSubMode: 'phone',
+                emailForm: { email: '', password: '' },
+                emailSignupForm: { name: '', mobile: '', email: '', password: '', confirmPassword: '', terms: false },
+                emailAuthError: '',
+                emailAuthLoading: false,
+                showEmailPassword: false,
                 showCheckoutModal: false,
                 authMode: 'login',
+                pendingAction: null,
                 signupForm: { name: '', phone: '' },
                 loggedInUser: null,
                 searchQuery: '',
@@ -1778,10 +2158,38 @@
                 },
                 userOrders() {
                     if (!this.loggedInUser) return [];
-                    return this.orders.filter(o => o.customerPhone === this.loggedInUser.phone).reverse();
+                    const u = this.loggedInUser;
+                    return this.orders.filter(o => {
+                        if (u.phone && u.phone.length >= 10 && o.customerPhone === u.phone) return true;
+                        if (u.email && (o.userEmail === u.email || o.customerEmail === u.email)) return true;
+                        if (u.uid && o.uid === u.uid) return true;
+                        return false;
+                    }).reverse();
                 }
             },
             methods: {
+                goToCategoryProducts(catName) {
+                    this.activeTab = 'products';
+                    this.selectedProduct = null;
+                    this.searchQuery = '';
+                    if (catName && catName !== 'All') {
+                        // Direct match first
+                        const exactMatch = this.availableCategories.find(c => c === catName);
+                        if (exactMatch) {
+                            this.selectedCategory = exactMatch;
+                        } else {
+                            // Partial match
+                            const partial = this.availableCategories.find(c =>
+                                c.toLowerCase().includes(catName.toLowerCase()) ||
+                                catName.toLowerCase().includes(c.toLowerCase())
+                            );
+                            this.selectedCategory = partial || 'All';
+                        }
+                    } else {
+                        this.selectedCategory = 'All';
+                    }
+                    history.pushState({page:'tab'}, '');
+                },
                 showToast(msg, type='success') {
                     const icons = { success:'fa-check-circle', error:'fa-times-circle', info:'fa-info-circle', order:'fa-bag-shopping', cart:'fa-cart-plus', warn:'fa-exclamation-triangle' };
                     const icon  = icons[type] || icons.success;
@@ -2004,10 +2412,20 @@
                 getProductSliderImages(){ if(!this.selectedProduct) return []; let imgs = (this.selectedProduct.images && Array.isArray(this.selectedProduct.images)) ? this.selectedProduct.images : [this.selectedProduct.image || 'https://placehold.co/300x200?text=Product']; return imgs.map(u => this.getDriveImageUrl(u)); },
                 nextProductImage(){ const imgs = this.getProductSliderImages(); if(imgs.length) this.currentProductImageIndex = (this.currentProductImageIndex+1)%imgs.length; },
                 prevProductImage(){ const imgs = this.getProductSliderImages(); if(imgs.length) this.currentProductImageIndex = (this.currentProductImageIndex-1+imgs.length)%imgs.length; },
-                buyNow(product){ if(product.stockStatus && product.stockStatus !== 'In stock'){ this.showToast('Out of stock','error'); return; } this.addToCart(product); this.openCheckout(); },
+                buyNow(product){
+                    if(product.stockStatus && product.stockStatus !== 'In stock'){ this.showToast('Out of stock','error'); return; }
+                    if(!this.loggedInUser){
+                        this.addToCart(product);
+                        this.pendingAction = 'checkout';
+                        this.authMode = 'signup';
+                        this.showLoginModal = true;
+                        return;
+                    }
+                    this.addToCart(product); this.openCheckout();
+                },
                 toggleWishlist(product){ let idx = this.wishlist.findIndex(i=>i.id===product.id); idx>-1? this.wishlist.splice(idx,1):this.wishlist.push(product); localStorage.setItem('sw_wishlist',JSON.stringify(this.wishlist)); this.showToast(`${product.name} ${idx>-1?'removed from':'added to'} wishlist`,'info'); },
                 isInWishlist(product){ return this.wishlist.some(i=>i.id===product.id); },
-                openAuth(mode){ this.authMode = mode; this.loginForm = { name:'', phone:'' }; this.signupForm = { name:'', phone:'' }; this.showLoginModal = true; history.pushState({page:'login'}, ''); },
+                openAuth(mode){ this.authMode = mode; this.authSubMode = 'phone'; this.loginForm = { name:'', phone:'' }; this.signupForm = { name:'', phone:'' }; this.emailForm = { email:'', password:'' }; this.emailSignupForm = { name:'', email:'', password:'' }; this.emailAuthError = ''; this.showLoginModal = true; history.pushState({page:'login'}, ''); },
                 async submitSignUp(){
                     const name = this.signupForm.name.trim();
                     const phone = this.signupForm.phone.trim();
@@ -2028,6 +2446,7 @@
                     this.showLoginModal = false;
                     this.showToast('✅ Account created! Welcome ' + name, 'info');
                     this.loadMyOrders();
+                    this._executePendingAction();
                 },
                 async submitLogin(){
                     const name = this.loginForm.name.trim();
@@ -2052,8 +2471,73 @@
                     this.showLoginModal = false;
                     this.showToast('✅ Welcome back, ' + savedUser.name + '!', 'info');
                     this.loadMyOrders();
+                    this._executePendingAction();
                 },
-                logout(){ this.loggedInUser=null; localStorage.removeItem('sw_user'); this.orders=[]; this.previousOrderStatuses={}; this.showToast('Logged out','info'); },
+                logout(){ this.loggedInUser=null; localStorage.removeItem('sw_user'); this.orders=[]; this.previousOrderStatuses={}; try{ firebase.auth().signOut(); }catch(e){} this.showToast('Logged out','info'); },
+
+                // ── Pending action after login/signup ──
+                _executePendingAction(){
+                    if(this.pendingAction === 'checkout'){
+                        this.pendingAction = null;
+                        this.$nextTick(() => { this.openCheckout(); });
+                    } else {
+                        this.pendingAction = null;
+                    }
+                },
+                async submitEmailLogin(){
+                    this.emailAuthError = '';
+                    const { email, password } = this.emailForm;
+                    if(!email || !password){ this.emailAuthError = 'Email aur Password dono required hain.'; return; }
+                    this.emailAuthLoading = true;
+                    try {
+                        const cred = await firebase.auth().signInWithEmailAndPassword(email, password);
+                        const uid = cred.user.uid;
+                        // Firebase DB se user profile lo
+                        const snap = await database.ref('users_email/' + uid).once('value');
+                        let userData = snap.val();
+                        if(!userData){ userData = { name: cred.user.displayName || email.split('@')[0], phone: '', email }; }
+                        userData.uid = uid;
+                        this.loggedInUser = userData;
+                        localStorage.setItem('sw_user', JSON.stringify(userData));
+                        this.showLoginModal = false;
+                        this.showToast('✅ Welcome back, ' + userData.name + '!', 'info');
+                        this.loadMyOrders();
+                        this._executePendingAction();
+                    } catch(e) {
+                        if(e.code === 'auth/user-not-found') this.emailAuthError = '❌ Yeh email registered nahi hai. Sign Up karein.';
+                        else if(e.code === 'auth/wrong-password') this.emailAuthError = '❌ Password galat hai. Dobara try karein.';
+                        else if(e.code === 'auth/invalid-email') this.emailAuthError = '❌ Email format sahi nahi hai.';
+                        else this.emailAuthError = e.message;
+                    } finally { this.emailAuthLoading = false; }
+                },
+                async submitEmailSignUp(){
+                    this.emailAuthError = '';
+                    const { name, mobile, email, password, confirmPassword, terms } = this.emailSignupForm;
+                    if(!name.trim()){ this.emailAuthError = 'Pura naam likhein.'; return; }
+                    if(mobile && mobile.length !== 10){ this.emailAuthError = 'Mobile number 10 digits ka hona chahiye.'; return; }
+                    if(!email){ this.emailAuthError = 'Email address required hai.'; return; }
+                    if(!password || password.length < 6){ this.emailAuthError = 'Password kam se kam 6 characters ka hona chahiye.'; return; }
+                    if(confirmPassword && password !== confirmPassword){ this.emailAuthError = 'Dono passwords match nahi kar rahe.'; return; }
+                    if(!terms){ this.emailAuthError = 'Terms & Conditions agree karein.'; return; }
+                    this.emailAuthLoading = true;
+                    try {
+                        const cred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+                        const uid = cred.user.uid;
+                        const userData = { name: name.trim(), email, phone: mobile || '', uid, createdAt: new Date().toISOString() };
+                        await database.ref('users_email/' + uid).set(userData);
+                        this.loggedInUser = userData;
+                        localStorage.setItem('sw_user', JSON.stringify(userData));
+                        this.showLoginModal = false;
+                        this.showToast('🎉 Account ban gaya! Welcome ' + name.trim(), 'info');
+                        this.loadMyOrders();
+                        this._executePendingAction();
+                    } catch(e) {
+                        if(e.code === 'auth/email-already-in-use') this.emailAuthError = '⚠️ Yeh email pehle se registered hai. Login karein.';
+                        else if(e.code === 'auth/invalid-email') this.emailAuthError = '❌ Email format sahi nahi hai.';
+                        else if(e.code === 'auth/weak-password') this.emailAuthError = '❌ Password aur strong banayein (6+ chars).';
+                        else this.emailAuthError = e.message;
+                    } finally { this.emailAuthLoading = false; }
+                },
                 addToCart(product, fromDetail=false){
                     if(product.stockStatus && product.stockStatus !== 'In stock'){ this.showToast('Out of stock','error'); return; }
                     // If product has sizes and we're on detail page, require selection
@@ -2070,7 +2554,17 @@
                     localStorage.setItem('sw_cart',JSON.stringify(this.cartItems));
                 },
                 updateQuantity(item,delta){ let newQty = item.quantity+delta; if(newQty<=0){ this.cartItems = this.cartItems.filter(i=>(i.cartKey||i.id)!==(item.cartKey||item.id)); }else{ item.quantity = newQty; } localStorage.setItem('sw_cart',JSON.stringify(this.cartItems)); },
-                openCheckout(){ if(!this.cartItems.length) return; if(this.loggedInUser){ this.checkoutForm.name=this.loggedInUser.name; this.checkoutForm.phone=this.loggedInUser.phone; } this.selectedPaymentMethod='COD'; this.utrId=''; this.uploadedImageUrl=''; this.uploadError=''; this.showCheckoutModal=true; history.pushState({page:'checkout'}, ''); },
+                openCheckout(){
+                    if(!this.cartItems.length) return;
+                    if(!this.loggedInUser){
+                        this.pendingAction = 'checkout';
+                        this.authMode = 'signup';
+                        this.showLoginModal = true;
+                        return;
+                    }
+                    if(this.loggedInUser){ this.checkoutForm.name=this.loggedInUser.name; this.checkoutForm.phone=this.loggedInUser.phone; }
+                    this.selectedPaymentMethod='COD'; this.utrId=''; this.uploadedImageUrl=''; this.uploadError=''; this.showCheckoutModal=true; history.pushState({page:'checkout'}, '');
+                },
                 async uploadReceiptToImgbb(event) {
                     const file = event.target.files[0];
                     if (!file) return;
@@ -2107,7 +2601,9 @@
                         customerName: this.checkoutForm.name.trim(),
                         customerPhone: this.checkoutForm.phone.trim(),
                         customerAddress: this.checkoutForm.address.trim(),
-                        userEmail: this.checkoutForm.phone.trim(),
+                        userEmail: this.loggedInUser ? (this.loggedInUser.email || this.checkoutForm.phone.trim()) : this.checkoutForm.phone.trim(),
+                        customerEmail: this.loggedInUser ? (this.loggedInUser.email || '') : '',
+                        uid: this.loggedInUser ? (this.loggedInUser.uid || '') : '',
                         items: orderItems,
                         total: this.cartTotal,
                         status: 'pending',
@@ -2132,7 +2628,7 @@
                         this.loadMyOrders();
                     } catch(e) { alert(e.message); }
                 },
-                async confirmOrder(){ if(!this.checkoutForm.name.trim()||!this.checkoutForm.phone.trim()||this.checkoutForm.phone.length<10||!this.checkoutForm.address.trim()){ alert('All fields required'); return; } const orderItems = this.cartItems.map(it=>({ id:it.id, name:it.name, quantity:it.quantity, price:Number(it.price) })); const newOrder = { customerName:this.checkoutForm.name.trim(), customerPhone:this.checkoutForm.phone.trim(), customerAddress:this.checkoutForm.address.trim(), userEmail:this.checkoutForm.phone.trim(), items:orderItems, total:this.cartTotal, status:'pending', paymentMethod:'COD', payment_method:'COD', date:new Date().toISOString() }; try{ await database.ref('orders').push(newOrder); if(!this.loggedInUser){ const newUser = { name:newOrder.customerName, phone:newOrder.customerPhone }; await database.ref(`users/${newUser.phone}`).set(newUser); this.loggedInUser=newUser; localStorage.setItem('sw_user',JSON.stringify(newUser)); } this.cartItems=[]; localStorage.removeItem('sw_cart'); this.showCheckoutModal=false; this.selectedProduct=null; this.showOrderSuccess=true; this.showToast('Order placed!','order'); this.loadMyOrders(); }catch(e){ alert(e.message); } },
+                async confirmOrder(){ if(!this.checkoutForm.name.trim()||!this.checkoutForm.phone.trim()||this.checkoutForm.phone.length<10||!this.checkoutForm.address.trim()){ alert('All fields required'); return; } const orderItems = this.cartItems.map(it=>({ id:it.id, name:it.name, quantity:it.quantity, price:Number(it.price) })); const newOrder = { customerName:this.checkoutForm.name.trim(), customerPhone:this.checkoutForm.phone.trim(), customerAddress:this.checkoutForm.address.trim(), userEmail:this.loggedInUser?(this.loggedInUser.email||this.checkoutForm.phone.trim()):this.checkoutForm.phone.trim(), customerEmail:this.loggedInUser?(this.loggedInUser.email||''):'', uid:this.loggedInUser?(this.loggedInUser.uid||''):'', items:orderItems, total:this.cartTotal, status:'pending', paymentMethod:'COD', payment_method:'COD', date:new Date().toISOString() }; try{ await database.ref('orders').push(newOrder); if(!this.loggedInUser){ const newUser = { name:newOrder.customerName, phone:newOrder.customerPhone }; await database.ref(`users/${newUser.phone}`).set(newUser); this.loggedInUser=newUser; localStorage.setItem('sw_user',JSON.stringify(newUser)); } this.cartItems=[]; localStorage.removeItem('sw_cart'); this.showCheckoutModal=false; this.selectedProduct=null; this.showOrderSuccess=true; this.showToast('Order placed!','order'); this.loadMyOrders(); }catch(e){ alert(e.message); } },
                 isEligibleForReturn(date){ if(!date) return false; return Math.ceil((new Date()-new Date(date))/(1000*60*60*24)) <= 6; },
                 initiateReturnExchange(order){ this.activeReturnOrder=order; this.returnPayload={reason:'',action:'',bankDetails:{name:'',bankName:'',accNumber:'',ifsc:'',phone:''}}; this.showReturnPage=true; history.pushState({page:'return'}, ''); },
                 handleBackButton(){
@@ -2260,7 +2756,7 @@
                     return 'text-gray-400';
                 },
                 loadProducts(){ database.ref('products').on('value',(snapshot)=>{ let data=snapshot.val(); this.products=data?Object.keys(data).map(key=>({ id:key, ...data[key] })):[];  this.$nextTick(()=>this.loadSuggestions()); }); },
-                loadMyOrders(){ if(!this.loggedInUser) return; database.ref('orders').on('value',(snapshot)=>{ let data=snapshot.val(); if(data){ let allOrders=Object.keys(data).map(key=>({ id:key, ...data[key] })); let updatedOrders=allOrders.filter(o=>o.customerPhone===this.loggedInUser.phone).reverse(); updatedOrders.forEach(order=>{ let old=this.previousOrderStatuses[order.id]; if(old && old!==order.status){ let shortId=order.id.slice(-6); if(order.status==='rejected') this.showToast(`Order #${shortId} cancelled`,'error'); else if(order.status==='return_approved'||order.status==='exchange_approved') this.showToast(`Return/Exchange approved for #${shortId}`,'order'); else if(order.status==='return_rejected'||order.status==='exchange_rejected') this.showToast(`Return/Exchange rejected for #${shortId}`,'error'); } this.previousOrderStatuses[order.id]=order.status; }); this.orders=updatedOrders; }else{ this.orders=[]; this.previousOrderStatuses={}; } }); },
+                loadMyOrders(){ if(!this.loggedInUser) return; database.ref('orders').on('value',(snapshot)=>{ let data=snapshot.val(); if(data){ let allOrders=Object.keys(data).map(key=>({ id:key, ...data[key] })); const u=this.loggedInUser; let updatedOrders=allOrders.filter(o=>{ if(u.phone && u.phone.length>=10 && o.customerPhone===u.phone) return true; if(u.email && (o.userEmail===u.email || o.customerEmail===u.email)) return true; if(u.uid && o.uid===u.uid) return true; return false; }).reverse(); updatedOrders.forEach(order=>{ let old=this.previousOrderStatuses[order.id]; if(old && old!==order.status){ let shortId=order.id.slice(-6); if(order.status==='rejected') this.showToast(`Order #${shortId} cancelled`,'error'); else if(order.status==='return_approved'||order.status==='exchange_approved') this.showToast(`Return/Exchange approved for #${shortId}`,'order'); else if(order.status==='return_rejected'||order.status==='exchange_rejected') this.showToast(`Return/Exchange rejected for #${shortId}`,'error'); } this.previousOrderStatuses[order.id]=order.status; }); this.orders=updatedOrders; }else{ this.orders=[]; this.previousOrderStatuses={}; } }); },
                 loadBanners(){ database.ref('banners').on('value',(snapshot)=>{ let val=snapshot.val(); this.banners=val?Object.values(val):['https://placehold.co/800x400?text=Pinkkart+Offers']; }); },
                 loadReviewsFeed() {
                     database.ref('reviews').on('value', (snapshot) => {
@@ -2317,31 +2813,45 @@
                 async handleAvatarUpload(e) {
                     const file = e.target.files[0];
                     if (!file) return;
-                    if (file.size > 3 * 1024 * 1024) { alert('Image too large! Max 3MB allowed.'); return; }
+                    if (file.size > 5 * 1024 * 1024) { this.showToast('Image bahut badi hai! Max 5MB allowed.', 'error'); return; }
                     this.isUploadingAvatar = true;
+                    const storageKey = this.loggedInUser ? ('sw_avatar_' + this.loggedInUser.phone) : 'sw_avatar_local';
                     const reader = new FileReader();
                     reader.onload = async (ev) => {
                         try {
+                            // imgbb pe upload karo
                             const base64 = ev.target.result.split(',')[1];
-                            let formData = new FormData();
-                            formData.append('file', base64);
-                            formData.append('filename', 'avatar_' + this.loggedInUser.phone + '_' + Date.now() + '.' + file.name.split('.').pop());
-                            formData.append('mimetype', file.type);
-                            const res = await fetch(this.googleDriveScriptUrl, { method: 'POST', body: formData });
+                            const formData = new FormData();
+                            formData.append('image', base64);
+                            const res = await fetch('https://api.imgbb.com/1/upload?key=9b6ea4121e0281d6911d13eaf8d59c86', {
+                                method: 'POST',
+                                body: formData
+                            });
                             const data = await res.json();
-                            if (data && data.url) {
-                                const directUrl = this.getDriveImageUrl(data.url);
-                                this.userAvatarUrl = directUrl;
-                                localStorage.setItem('sw_avatar_' + this.loggedInUser.phone, directUrl);
-                                await database.ref('users/' + this.loggedInUser.phone).update({ avatarUrl: directUrl });
-                                this.showToast('Profile photo updated!', 'order');
+                            if (data && data.data && data.data.url) {
+                                const imgUrl = data.data.url;
+                                this.userAvatarUrl = imgUrl;
+                                localStorage.setItem(storageKey, imgUrl);
+                                // Firebase me bhi save karo agar logged in ho
+                                if (this.loggedInUser) {
+                                    await database.ref('users/' + this.loggedInUser.phone).update({ avatarUrl: imgUrl });
+                                }
+                                this.showToast('✅ Profile photo update ho gaya!', 'success');
+                            } else {
+                                throw new Error('imgbb upload failed');
                             }
                         } catch(err) {
-                            // Fallback: store base64 locally
+                            // Fallback: base64 locally save karo
                             this.userAvatarUrl = ev.target.result;
-                            localStorage.setItem('sw_avatar_' + this.loggedInUser.phone, ev.target.result);
-                            this.showToast('Photo saved locally!', 'info');
+                            localStorage.setItem(storageKey, ev.target.result);
+                            this.showToast('📷 Photo locally save ho gaya!', 'info');
                         }
+                        this.isUploadingAvatar = false;
+                        // Input reset karo taki same image dobara bhi select ho sake
+                        e.target.value = '';
+                    };
+                    reader.onerror = () => {
+                        this.showToast('Photo read nahi ho payi, dobara try karein.', 'error');
                         this.isUploadingAvatar = false;
                     };
                     reader.readAsDataURL(file);
@@ -2388,6 +2898,8 @@
             },
             mounted() {
                 let saved = localStorage.getItem('sw_user'); if(saved){ this.loggedInUser = JSON.parse(saved); let av = localStorage.getItem('sw_avatar_' + this.loggedInUser.phone); if(av) this.userAvatarUrl = av; let logo = localStorage.getItem('pk_shop_logo'); if(logo) this.shopLogoUrl = logo; }
+                // Bina login ke bhi local avatar load karo
+                if (!this.userAvatarUrl) { let localAv = localStorage.getItem('sw_avatar_local'); if(localAv) this.userAvatarUrl = localAv; }
                 let savedWish = localStorage.getItem('sw_wishlist'); if(savedWish) this.wishlist = JSON.parse(savedWish);
                 let savedCart = localStorage.getItem('sw_cart'); if(savedCart) this.cartItems = JSON.parse(savedCart);
                 let savedRV = localStorage.getItem('sw_recently_viewed'); if(savedRV) this.recentlyViewed = JSON.parse(savedRV);
@@ -2395,6 +2907,23 @@
                 if(localStorage.getItem('pk_theme') === 'dark'){ this.isDark = true; document.body.classList.add('dark-mode'); }
                 if(this.loggedInUser) this.fetchProfile();
                 this.loadProducts(); this.loadMyOrders(); this.loadBanners(); this.loadAdminControls(); this.loadReviewsFeed(); this.startSlider();
+
+                // --- FIREBASE EMAIL AUTH STATE LISTENER ---
+                const vm = this;
+                firebase.auth().onAuthStateChanged(async (firebaseUser) => {
+                    if(firebaseUser && !vm.loggedInUser){
+                        // Email se logged in user
+                        try {
+                            const snap = await database.ref('users_email/' + firebaseUser.uid).once('value');
+                            if(snap.exists()){
+                                const userData = snap.val();
+                                vm.loggedInUser = userData;
+                                localStorage.setItem('sw_user', JSON.stringify(userData));
+                                vm.loadMyOrders();
+                            }
+                        } catch(e) { console.log('Auth state check error:', e); }
+                    }
+                });
 
                 // --- DEEP LINK: shared product URL se auto-open ---
                 const urlParams = new URLSearchParams(window.location.search);
@@ -2435,7 +2964,6 @@
                 // --- LIVE POP-UP ENDS ---
                 history.replaceState({page:'home'}, '');
                 history.pushState({page:'app'}, '');
-                const vm = this;
                 window.addEventListener('popstate', function(e) {
                     const hasBack = vm.showFullScreenImage || vm.showLoginModal || vm.showCheckoutModal || vm.showPaymentVerifyModal || vm.showReturnPage || vm.selectedProduct || vm.activeTab !== 'products';
                     if(hasBack){
