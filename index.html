@@ -365,7 +365,7 @@
                         <span v-if="selectedCategory !== 'All'" @click="selectedCategory = 'All'" class="text-xs text-blue-600 font-semibold cursor-pointer">Clear Filter</span>
                     </div>
                     <div class="overflow-x-auto no-scrollbar pb-1">
-                        <div style="display:grid; grid-auto-flow:column; grid-template-rows:repeat(2,auto); gap:8px 10px; width:max-content;">
+                        <div style="display:flex; flex-direction:row; gap:10px; width:max-content;">
                             <div v-for="cat in availableCategories" :key="cat" @click="selectedCategory = cat"
                                  :class="selectedCategory === cat ? 'border-blue-500 bg-blue-50' : 'border-gray-100 bg-white'"
                                  class="flex flex-col items-center gap-1 px-2.5 pt-2 pb-1.5 rounded-2xl border-2 cursor-pointer transition w-[62px] shadow-sm relative">
