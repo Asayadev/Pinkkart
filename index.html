@@ -1794,7 +1794,7 @@
                     <div class="bg-gray-50 rounded-2xl p-3">
                         <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Order Summary</p>
                         <div class="space-y-1.5 mb-2">
-                            <div v-for="item in cartItems" :key="item.cartKey" class="flex justify-between text-xs text-gray-700">
+                            <div v-for="item in (isBuyNowMode && buyNowItem ? buyNowItem : cartItems)" :key="item.cartKey" class="flex justify-between text-xs text-gray-700">
                                 <span class="truncate max-w-[65%] font-medium">{{ item.name }} <span class="text-gray-400">×{{ item.quantity }}</span></span>
                                 <span class="font-bold">₹{{ (getEffectivePrice(item) * item.quantity) }}</span>
                             </div>
@@ -1954,7 +1954,7 @@
 
                     <!-- Order items mini -->
                     <div class="bg-gray-50 rounded-2xl p-3 space-y-1">
-                        <div v-for="item in cartItems" :key="item.cartKey" class="flex justify-between text-xs text-gray-600">
+                        <div v-for="item in (isBuyNowMode && buyNowItem ? buyNowItem : cartItems)" :key="item.cartKey" class="flex justify-between text-xs text-gray-600">
                             <span class="truncate max-w-[65%]">{{ item.name }} ×{{ item.quantity }}</span>
                             <span class="font-bold text-gray-800">₹{{ getEffectivePrice(item) * item.quantity }}</span>
                         </div>
@@ -2107,6 +2107,8 @@
                 globalReviews: [],
                 // Order Success
                 showOrderSuccess: false,
+                buyNowItem: null,
+                isBuyNowMode: false,
                 // Avatar
                 userAvatarUrl: '',
                 isUploadingAvatar: false,
@@ -2217,7 +2219,8 @@
                     return this.products.filter(p => p.category === this.selectedProduct.category && p.id !== this.selectedProduct.id); 
                 },
                 cartTotal() { 
-                    return this.cartItems.reduce((sum, item) => {
+                    const items = this.isBuyNowMode && this.buyNowItem ? this.buyNowItem : this.cartItems;
+                    return items.reduce((sum, item) => {
                         const disc = this.globalDiscount > 0 ? Math.round(Number(item.price) * (1 - this.globalDiscount / 100)) : Number(item.price);
                         return sum + disc * item.quantity;
                     }, 0); 
@@ -2225,7 +2228,8 @@
                 deliveryChargeApplied() {
                     const ds = this.deliverySettings;
                     if (!ds.isActive) return 0;
-                    if (this.cartItems.length === 0) return 0;
+                    const items = this.isBuyNowMode && this.buyNowItem ? this.buyNowItem : this.cartItems;
+                    if (items.length === 0) return 0;
                     return this.cartTotal < ds.minOrderLimit ? ds.deliveryCharge : 0;
                 },
                 grandTotal() {
@@ -2497,14 +2501,37 @@
                 prevProductImage(){ const imgs = this.getProductSliderImages(); if(imgs.length) this.currentProductImageIndex = (this.currentProductImageIndex-1+imgs.length)%imgs.length; },
                 buyNow(product){
                     if(product.stockStatus && product.stockStatus !== 'In stock'){ this.showToast('Out of stock','error'); return; }
+                    // Size check if product has sizes
+                    if(product.sizes && product.sizes.filter(s => s !== 'Free Size').length > 0 && !this.selectedSize){
+                        this.showToast('पहले size select करें!','error'); return;
+                    }
+                    // buyNow ke liye temporary item banao — cart me ADD mat karo
+                    let img = (product.images && product.images[0]) ? product.images[0] : product.image;
+                    let sizeLabel = (product.sizes && product.sizes.length) ? (this.selectedSize || 'Free Size') : 'Free Size';
+                    this.buyNowItem = [{
+                        cartKey: product.id + '_buynow',
+                        id: product.id,
+                        name: product.name + (sizeLabel && sizeLabel !== 'Free Size' ? ' (' + sizeLabel + ')' : ''),
+                        price: product.price,
+                        image: img,
+                        quantity: 1,
+                        size: sizeLabel,
+                        shopkeeperName: product.shopkeeperName || product.shopkeeper || product.sellerName || '',
+                        shopkeeperId: product.shopkeeperId || product.sellerId || ''
+                    }];
                     if(!this.loggedInUser){
-                        this.addToCart(product);
-                        this.pendingAction = 'checkout';
+                        this.pendingAction = 'buynow';
                         this.authMode = 'signup';
                         this.showLoginModal = true;
                         return;
                     }
-                    this.addToCart(product); this.openCheckout();
+                    this.openBuyNowCheckout();
+                },
+                openBuyNowCheckout(){
+                    if(!this.buyNowItem || !this.buyNowItem.length) return;
+                    if(this.loggedInUser){ this.checkoutForm.name=this.loggedInUser.name; this.checkoutForm.phone=this.loggedInUser.phone; }
+                    this.isBuyNowMode = true;
+                    this.selectedPaymentMethod='COD'; this.utrId=''; this.uploadedImageUrl=''; this.uploadError=''; this.showCheckoutModal=true; history.pushState({page:'checkout'}, '');
                 },
                 toggleWishlist(product){ let idx = this.wishlist.findIndex(i=>i.id===product.id); idx>-1? this.wishlist.splice(idx,1):this.wishlist.push(product); localStorage.setItem('sw_wishlist',JSON.stringify(this.wishlist)); this.showToast(`${product.name} ${idx>-1?'removed from':'added to'} wishlist`,'info'); },
                 isInWishlist(product){ return this.wishlist.some(i=>i.id===product.id); },
@@ -2563,6 +2590,9 @@
                     if(this.pendingAction === 'checkout'){
                         this.pendingAction = null;
                         this.$nextTick(() => { this.openCheckout(); });
+                    } else if(this.pendingAction === 'buynow'){
+                        this.pendingAction = null;
+                        this.$nextTick(() => { this.openBuyNowCheckout(); });
                     } else {
                         this.pendingAction = null;
                     }
@@ -2705,7 +2735,8 @@
                             await database.ref(`users/${newUser.phone}`).set(newUser);
                             this.loggedInUser = newUser; localStorage.setItem('sw_user', JSON.stringify(newUser));
                         }
-                        this.cartItems = []; localStorage.removeItem('sw_cart');
+                        if(!this.isBuyNowMode){ this.cartItems = []; localStorage.removeItem('sw_cart'); }
+                        this.buyNowItem=null; this.isBuyNowMode=false;
                         this.showPaymentVerifyModal = false; this.selectedProduct = null;
                         this.utrId = ''; this.uploadedImageUrl = '';
                         this.showOrderSuccess = true;
@@ -2713,13 +2744,27 @@
                         this.loadMyOrders();
                     } catch(e) { alert(e.message); }
                 },
-                async confirmOrder(){ if(!this.checkoutForm.name.trim()||!this.checkoutForm.phone.trim()||this.checkoutForm.phone.length<10||!this.checkoutForm.address.trim()){ alert('All fields required'); return; } const orderItems = this.cartItems.map(it=>({ id:it.id, name:it.name, quantity:it.quantity, price:Number(it.price), shopkeeperName:it.shopkeeperName||it.shopkeeper||'', shopkeeper:it.shopkeeperName||it.shopkeeper||'', shopkeeperId:it.shopkeeperId||'' })); const newOrder = { customerName:this.checkoutForm.name.trim(), customerPhone:this.checkoutForm.phone.trim(), customerAddress:this.checkoutForm.address.trim(), userEmail:this.loggedInUser?(this.loggedInUser.email||this.checkoutForm.phone.trim()):this.checkoutForm.phone.trim(), customerEmail:this.loggedInUser?(this.loggedInUser.email||''):'', uid:this.loggedInUser?(this.loggedInUser.uid||''):'', items:orderItems, itemTotal:this.cartTotal, deliveryCharge:this.deliveryChargeApplied, total:this.grandTotal, status:'pending', paymentMethod:'COD', payment_method:'COD', date:new Date().toISOString() }; try{ await database.ref('orders').push(newOrder); if(!this.loggedInUser){ const newUser = { name:newOrder.customerName, phone:newOrder.customerPhone }; await database.ref(`users/${newUser.phone}`).set(newUser); this.loggedInUser=newUser; localStorage.setItem('sw_user',JSON.stringify(newUser)); } this.cartItems=[]; localStorage.removeItem('sw_cart'); this.showCheckoutModal=false; this.selectedProduct=null; this.showOrderSuccess=true; this.showToast('Order placed!','order'); this.loadMyOrders(); }catch(e){ alert(e.message); } },
+                async confirmOrder(){
+                    if(!this.checkoutForm.name.trim()||!this.checkoutForm.phone.trim()||this.checkoutForm.phone.length<10||!this.checkoutForm.address.trim()){ alert('All fields required'); return; }
+                    const activeItems = this.isBuyNowMode ? this.buyNowItem : this.cartItems;
+                    const orderItems = activeItems.map(it=>({ id:it.id, name:it.name, quantity:it.quantity, price:Number(it.price), shopkeeperName:it.shopkeeperName||it.shopkeeper||'', shopkeeper:it.shopkeeperName||it.shopkeeper||'', shopkeeperId:it.shopkeeperId||'' }));
+                    const itemTotal = activeItems.reduce((s,i)=>s+Number(i.price)*i.quantity,0);
+                    const newOrder = { customerName:this.checkoutForm.name.trim(), customerPhone:this.checkoutForm.phone.trim(), customerAddress:this.checkoutForm.address.trim(), userEmail:this.loggedInUser?(this.loggedInUser.email||this.checkoutForm.phone.trim()):this.checkoutForm.phone.trim(), customerEmail:this.loggedInUser?(this.loggedInUser.email||''):'', uid:this.loggedInUser?(this.loggedInUser.uid||''):'', items:orderItems, itemTotal:itemTotal, deliveryCharge:this.deliveryChargeApplied, total:itemTotal+this.deliveryChargeApplied, status:'pending', paymentMethod:'COD', payment_method:'COD', date:new Date().toISOString() };
+                    try{
+                        await database.ref('orders').push(newOrder);
+                        if(!this.loggedInUser){ const newUser = { name:newOrder.customerName, phone:newOrder.customerPhone }; await database.ref(`users/${newUser.phone}`).set(newUser); this.loggedInUser=newUser; localStorage.setItem('sw_user',JSON.stringify(newUser)); }
+                        // Sirf normal cart ko clear karo, buyNow mode mein cart safe rahe
+                        if(!this.isBuyNowMode){ this.cartItems=[]; localStorage.removeItem('sw_cart'); }
+                        this.buyNowItem=null; this.isBuyNowMode=false;
+                        this.showCheckoutModal=false; this.selectedProduct=null; this.showOrderSuccess=true; this.showToast('Order placed!','order'); this.loadMyOrders();
+                    }catch(e){ alert(e.message); }
+                },
                 isEligibleForReturn(date){ if(!date) return false; return Math.ceil((new Date()-new Date(date))/(1000*60*60*24)) <= 6; },
                 initiateReturnExchange(order){ this.activeReturnOrder=order; this.returnPayload={reason:'',action:'',bankDetails:{name:'',bankName:'',accNumber:'',ifsc:'',phone:''}}; this.showReturnPage=true; history.pushState({page:'return'}, ''); },
                 handleBackButton(){
                     if(this.showFullScreenImage){ this.showFullScreenImage=false; return; }
                     if(this.showLoginModal){ this.showLoginModal=false; return; }
-                    if(this.showCheckoutModal){ this.showCheckoutModal=false; return; }
+                    if(this.showCheckoutModal){ this.showCheckoutModal=false; this.isBuyNowMode=false; this.buyNowItem=null; return; }
                     if(this.showPaymentVerifyModal){ this.showPaymentVerifyModal=false; return; }
                     if(this.showReturnPage){ this.showReturnPage=false; return; }
                     if(this.selectedProduct){ this.selectedProduct=null; window.scrollTo({top:0,behavior:'smooth'}); return; }
