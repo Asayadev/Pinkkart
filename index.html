@@ -319,7 +319,7 @@
                     <span v-if="wishlist.length" class="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">{{ wishlist.length }}</span>
                 </button>
                 <!-- Cart icon -->
-                <button @click="activeTab='cart'; history.pushState({page:'tab'},'')" class="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-blue-50 transition">
+                <button @click="isBuyNowMode=false; buyNowItem=null; activeTab='cart'; history.pushState({page:'tab'},'')" class="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-blue-50 transition">
                     <i class="fas fa-shopping-cart text-gray-600 text-xl"></i>
                     <span v-if="cartItems && cartItems.length" class="absolute -top-0.5 -right-0.5 bg-purple-600 text-white text-[10px] font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none">{{ cartItems.length }}</span>
                 </button>
@@ -3570,7 +3570,7 @@
                     if (cls === 'active') return 'text-blue-600';
                     return 'text-gray-400';
                 },
-                loadProducts(){ database.ref('products').on('value',(snapshot)=>{ let data=snapshot.val(); this.products=data?Object.keys(data).map(key=>({ id:key, ...data[key], selectedVariantIndex: 0 })):[];  this.$nextTick(()=>this.loadSuggestions()); }); },
+                loadProducts(){ database.ref('products').on('value',(snapshot)=>{ let data=snapshot.val(); if(data){ this.products=Object.keys(data).map(key=>({ id:key, ...data[key], selectedVariantIndex: 0 })); } else if(!this.products.length){ this.products=[]; } this.$nextTick(()=>this.loadSuggestions()); }); },
                 loadMyOrders(){
                     if(!this.loggedInUser) return;
                     database.ref('orders').on('value',(snapshot)=>{
