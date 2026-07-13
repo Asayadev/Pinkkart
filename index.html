@@ -3173,6 +3173,31 @@
                     if (!base) return;
                     try { await database.ref(base + '/cart').set(this.cartItems); } catch(e) {}
                 },
+                // Local (guest) cart/wishlist ko cloud (pehle se saved) data ke saath MERGE karta hai.
+                // Overwrite nahi karta — isliye login ke waqt guest ka abhi wala cart/wishlist gayab nahi hota.
+                mergeCartArrays(localArr, cloudArr) {
+                    const merged = Array.isArray(localArr) ? [...localArr] : [];
+                    if (!Array.isArray(cloudArr)) return merged;
+                    cloudArr.forEach(cloudItem => {
+                        const key = cloudItem.cartKey || cloudItem.id;
+                        const existing = merged.find(i => (i.cartKey || i.id) === key);
+                        if (existing) {
+                            // Dono me hai to jyada quantity rakho (guna nahi, taaki duplicate na ho)
+                            existing.quantity = Math.max(Number(existing.quantity || 1), Number(cloudItem.quantity || 1));
+                        } else {
+                            merged.push(cloudItem);
+                        }
+                    });
+                    return merged;
+                },
+                mergeWishlistArrays(localArr, cloudArr) {
+                    const merged = Array.isArray(localArr) ? [...localArr] : [];
+                    if (!Array.isArray(cloudArr)) return merged;
+                    cloudArr.forEach(cloudItem => {
+                        if (!merged.some(i => i.id === cloudItem.id)) merged.push(cloudItem);
+                    });
+                    return merged;
+                },
                 async loadUserCloudData() {
                     const base = this.getCloudUserPath();
                     if (!base) return;
@@ -3180,10 +3205,14 @@
                         const snap = await database.ref(base).once('value');
                         if (snap.exists()) {
                             const d = snap.val();
-                            if (Array.isArray(d.wishlist)) { this.wishlist = d.wishlist; localStorage.setItem('sw_wishlist', JSON.stringify(this.wishlist)); }
-                            if (Array.isArray(d.cart)) { this.cartItems = d.cart; localStorage.setItem('sw_cart', JSON.stringify(this.cartItems)); }
+                            if (Array.isArray(d.wishlist)) { this.wishlist = this.mergeWishlistArrays(this.wishlist, d.wishlist); localStorage.setItem('sw_wishlist', JSON.stringify(this.wishlist)); }
+                            if (Array.isArray(d.cart)) { this.cartItems = this.mergeCartArrays(this.cartItems, d.cart); localStorage.setItem('sw_cart', JSON.stringify(this.cartItems)); }
                             if (d.avatarUrl) { this.userAvatarUrl = d.avatarUrl; if(this.loggedInUser.phone) localStorage.setItem('sw_avatar_' + this.loggedInUser.phone, d.avatarUrl); }
                         }
+                        // Merge ke baad final (guest + cloud) cart/wishlist wapas cloud me push kar do,
+                        // taaki dono jagah sync rahe aur agli baar purana data na aaye.
+                        this.syncCartToCloud();
+                        this.syncWishlistToCloud();
                     } catch(e) {}
                 },
                 isInWishlist(product){ return this.wishlist.some(i=>i.id===product.id); },
@@ -3209,7 +3238,7 @@
                     this.showLoginModal = false;
                     this.showToast('✅ Account created! Welcome ' + name, 'info');
                     this.loadMyOrders();
-                    this.loadUserCloudData();
+                    await this.loadUserCloudData();
                     this._executePendingAction();
                 },
                 async submitLogin(){
@@ -3236,7 +3265,7 @@
                     this.showLoginModal = false;
                     this.showToast('✅ Welcome back, ' + savedUser.name + '!', 'info');
                     this.loadMyOrders();
-                    this.loadUserCloudData();
+                    await this.loadUserCloudData();
                     this._executePendingAction();
                 },
                 startCashbackListener(phone, uid) {
@@ -3295,6 +3324,7 @@
                         this.showLoginModal = false;
                         this.showToast('✅ Welcome back, ' + userData.name + '!', 'info');
                         this.loadMyOrders();
+                        await this.loadUserCloudData();
                         this._executePendingAction();
                     } catch(e) {
                         if(e.code === 'auth/user-not-found') this.emailAuthError = '❌ Yeh email registered nahi hai. Sign Up karein.';
@@ -3324,6 +3354,7 @@
                         this.showLoginModal = false;
                         this.showToast('🎉 Account ban gaya! Welcome ' + name.trim(), 'info');
                         this.loadMyOrders();
+                        await this.loadUserCloudData();
                         this._executePendingAction();
                     } catch(e) {
                         if(e.code === 'auth/email-already-in-use') this.emailAuthError = '⚠️ Yeh email pehle se registered hai. Login karein.';
