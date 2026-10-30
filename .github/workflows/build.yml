@@ -37,6 +37,12 @@ jobs:
           # Live Vercel URL
           sed -i 's|<content src="index.html" />|<content src="https://pinkkart-shop.vercel.app" />|g' config.xml
 
+          # Icon copy aur config me inject karna
+          if [ -f "../icon.png" ]; then
+            cp ../icon.png icon.png
+            sed -i '/<\/widget>/i \    <icon src="icon.png" \/>' config.xml
+          fi
+
           # Permissions
           sed -i '/<\/widget>/i \    <allow-navigation href="https://pinkkart-shop.vercel.app*" \/>' config.xml
           sed -i '/<\/widget>/i \    <allow-navigation href="https://*" \/>' config.xml
