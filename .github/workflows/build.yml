@@ -27,12 +27,18 @@ jobs:
       - name: Build Web App to APK
         run: |
           npm install -g cordova
-          cordova create myApp com.pinkkart.shop PinkkartShop
+          cordova create myApp com.pinkkart.shop Pinkkart
           cd myApp
 
           # 1. Status Bar aur Navigation Bar Plugins install karna
           cordova plugin add cordova-plugin-statusbar
           cordova plugin add cordova-plugin-navigationbar-color
+
+                     # Icon copy aur config me inject karna
+          if [ -f "../icon.png" ]; then
+            cp ../icon.png icon.png
+            sed -i '/<\/widget>/i \    <icon src="icon.png" \/>' config.xml
+          fi
 
           # 2. Live Vercel URL connect karna
           sed -i 's|<content src="index.html" />|<content src="https://pinkkart-shop.vercel.app" />|g' config.xml
