@@ -30,32 +30,31 @@ jobs:
           cordova create myApp com.pinkkart.shop Pinkkart
           cd myApp
 
-          # 1. Status Bar aur Navigation Bar Plugins install karna
+          # Plugins
           cordova plugin add cordova-plugin-statusbar
           cordova plugin add cordova-plugin-navigationbar-color
 
-                     # Icon copy aur config me inject karna
-          if [ -f "../icon.png" ]; then
-            cp ../icon.png icon.png
-            sed -i '/<\/widget>/i \    <icon src="icon.png" \/>' config.xml
-          fi
-
-          # 2. Live Vercel URL connect karna
+          # Live Vercel URL
           sed -i 's|<content src="index.html" />|<content src="https://pinkkart-shop.vercel.app" />|g' config.xml
 
-          # 3. Permissions setup
+          # Permissions
           sed -i '/<\/widget>/i \    <allow-navigation href="https://pinkkart-shop.vercel.app*" \/>' config.xml
           sed -i '/<\/widget>/i \    <allow-navigation href="https://*" \/>' config.xml
           sed -i '/<\/widget>/i \    <access origin="*" \/>' config.xml
 
-          # 4. Top Status Bar ko White (#ffffff) aur icons ko Dark karna
+          # Top & Bottom Bars White
           sed -i '/<\/widget>/i \    <preference name="StatusBarOverlaysWebView" value="false" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="StatusBarBackgroundColor" value="#ffffff" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="StatusBarStyle" value="default" \/>' config.xml
-
-          # 5. Bottom Navigation Bar ko White (#ffffff) aur buttons ko Dark karna
           sed -i '/<\/widget>/i \    <preference name="NavigationBarColor" value="#ffffff" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="NavigationBarLight" value="true" \/>' config.xml
+
+          # Native Splash band karke direct HTML loader dikhana
+          sed -i '/<\/widget>/i \    <preference name="SplashScreenDelay" value="0" \/>' config.xml
+          sed -i '/<\/widget>/i \    <preference name="AutoHideSplashScreen" value="true" \/>' config.xml
+          sed -i '/<\/widget>/i \    <preference name="FadeSplashScreen" value="false" \/>' config.xml
+          sed -i '/<\/widget>/i \    <preference name="ShowSplashScreenSpinner" value="false" \/>' config.xml
+          sed -i '/<\/widget>/i \    <preference name="BackgroundColor" value="#ffffff" \/>' config.xml
 
           cordova platform add android
           cordova build android
