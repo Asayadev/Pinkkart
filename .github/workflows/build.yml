@@ -37,7 +37,7 @@ jobs:
           # Live Vercel URL
           sed -i 's|<content src="index.html" />|<content src="https://pinkkart-shop.vercel.app" />|g' config.xml
 
-          # Custom Icon
+          # App Launcher Icon
           if [ -f "../icon.png" ]; then
             cp ../icon.png icon.png
             sed -i '/<\/widget>/i \    <icon src="icon.png" \/>' config.xml
@@ -48,43 +48,42 @@ jobs:
           sed -i '/<\/widget>/i \    <allow-navigation href="https://*" \/>' config.xml
           sed -i '/<\/widget>/i \    <access origin="*" \/>' config.xml
 
-          # Top & Bottom Bars White
+          # App khulne ke baad Top & Bottom Bars White rahenge
           sed -i '/<\/widget>/i \    <preference name="StatusBarOverlaysWebView" value="false" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="StatusBarBackgroundColor" value="#ffffff" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="StatusBarStyle" value="default" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="NavigationBarColor" value="#ffffff" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="NavigationBarLight" value="true" \/>' config.xml
 
-          # Splash Screen Preferences
+          # Cordova Splash Settings matching Logo Background (#e6005c)
           sed -i '/<\/widget>/i \    <preference name="SplashScreenDelay" value="0" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="AutoHideSplashScreen" value="true" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="FadeSplashScreen" value="false" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="ShowSplashScreenSpinner" value="false" \/>' config.xml
-          sed -i '/<\/widget>/i \    <preference name="BackgroundColor" value="#ffffff" \/>' config.xml
+          sed -i '/<\/widget>/i \    <preference name="BackgroundColor" value="#e6005c" \/>' config.xml
 
           cordova platform add android
 
-          # 1. Robot icon drawables ko transparent/blank image se overwrite karna
-          find platforms/android/app/src/main/res/ -name "*ic_cdv_splashscreen*" -delete
-          find platforms/android/app/src/main/res/ -name "*splash*" -type f -delete || true
+          # Logo replace & Android 12 Splash Theme setup
+          if [ -f "../icon.png" ]; then
+            mkdir -p platforms/android/app/src/main/res/drawable
+            cp ../icon.png platforms/android/app/src/main/res/drawable/splash_icon.png
 
-          # Transparent 1x1 vector drawable create karna
-          mkdir -p platforms/android/app/src/main/res/drawable
-          cat << 'EOF' > platforms/android/app/src/main/res/drawable/ic_cdv_splashscreen.xml
-          <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="1dp"
-              android:height="1dp"
-              android:viewportWidth="1"
-              android:viewportHeight="1">
-          </vector>
-          EOF
+            find platforms/android/app/src/main/res/ -name "*ic_cdv_splashscreen*" | while read file; do
+              cp ../icon.png "$file"
+            done
 
-          # 2. Saare themes files me windowSplashScreenAnimatedIcon ko transparent banana
-          find platforms/android/app/src/main/res/ -name "themes*.xml" | while read theme; do
-            sed -i 's|.*windowSplashScreenAnimatedIcon.*|<item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_cdv_splashscreen</item>|g' "$theme"
-            sed -i 's|.*windowSplashScreenBackground.*|<item name="android:windowSplashScreenBackground">#ffffff</item>|g' "$theme"
-            sed -i 's|.*android:windowBackground.*|<item name="android:windowBackground">#ffffff</item>|g' "$theme"
-          done
+            find platforms/android/app/src/main/res/ -name "*splash*" -type f | while read file; do
+              cp ../icon.png "$file" 2>/dev/null || true
+            done
+
+            # Splash background ko exact Pinkkart Pink (#e6005c) karna
+            find platforms/android/app/src/main/res/ -name "themes*.xml" | while read theme; do
+              sed -i 's|.*windowSplashScreenAnimatedIcon.*|<item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>|g' "$theme"
+              sed -i 's|.*windowSplashScreenBackground.*|<item name="android:windowSplashScreenBackground">#e6005c</item>|g' "$theme"
+              sed -i 's|.*android:windowBackground.*|<item name="android:windowBackground">#e6005c</item>|g' "$theme"
+            done
+          fi
 
           cordova build android
 
