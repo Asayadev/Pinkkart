@@ -37,7 +37,7 @@ jobs:
           # Live Vercel URL
           sed -i 's|<content src="index.html" />|<content src="https://pinkkart-shop.vercel.app" />|g' config.xml
 
-          # Icon copy
+          # Custom Icon
           if [ -f "../icon.png" ]; then
             cp ../icon.png icon.png
             sed -i '/<\/widget>/i \    <icon src="icon.png" \/>' config.xml
@@ -55,23 +55,36 @@ jobs:
           sed -i '/<\/widget>/i \    <preference name="NavigationBarColor" value="#ffffff" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="NavigationBarLight" value="true" \/>' config.xml
 
-          # Cordova preferences for splash
+          # Splash Screen Preferences
           sed -i '/<\/widget>/i \    <preference name="SplashScreenDelay" value="0" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="AutoHideSplashScreen" value="true" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="FadeSplashScreen" value="false" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="ShowSplashScreenSpinner" value="false" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="BackgroundColor" value="#ffffff" \/>' config.xml
 
-          # Android Platform add karna
           cordova platform add android
 
-          # Robot Icon hatana aur Android 12 Native Splash ko pure white karna
-          THEME_FILE="platforms/android/app/src/main/res/values/themes.xml"
-          if [ -f "$THEME_FILE" ]; then
-            sed -i '/windowSplashScreenAnimatedIcon/d' "$THEME_FILE"
-            sed -i '/windowSplashScreenBackground/d' "$THEME_FILE"
-            sed -i 's|<style name="Theme.App.SplashScreen" parent="Theme.SplashScreen">|<style name="Theme.App.SplashScreen" parent="Theme.SplashScreen">\n        <item name="windowSplashScreenBackground">#ffffff</item>\n        <item name="windowSplashScreenAnimatedIcon">@null</item>\n        <item name="android:windowBackground">#ffffff</item>|g' "$THEME_FILE"
-          fi
+          # 1. Robot icon drawables ko transparent/blank image se overwrite karna
+          find platforms/android/app/src/main/res/ -name "*ic_cdv_splashscreen*" -delete
+          find platforms/android/app/src/main/res/ -name "*splash*" -type f -delete || true
+
+          # Transparent 1x1 vector drawable create karna
+          mkdir -p platforms/android/app/src/main/res/drawable
+          cat << 'EOF' > platforms/android/app/src/main/res/drawable/ic_cdv_splashscreen.xml
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="1dp"
+              android:height="1dp"
+              android:viewportWidth="1"
+              android:viewportHeight="1">
+          </vector>
+          EOF
+
+          # 2. Saare themes files me windowSplashScreenAnimatedIcon ko transparent banana
+          find platforms/android/app/src/main/res/ -name "themes*.xml" | while read theme; do
+            sed -i 's|.*windowSplashScreenAnimatedIcon.*|<item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_cdv_splashscreen</item>|g' "$theme"
+            sed -i 's|.*windowSplashScreenBackground.*|<item name="android:windowSplashScreenBackground">#ffffff</item>|g' "$theme"
+            sed -i 's|.*android:windowBackground.*|<item name="android:windowBackground">#ffffff</item>|g' "$theme"
+          done
 
           cordova build android
 
