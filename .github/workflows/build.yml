@@ -37,7 +37,7 @@ jobs:
           # Live Vercel URL
           sed -i 's|<content src="index.html" />|<content src="https://pinkkart-shop.vercel.app" />|g' config.xml
 
-          # Icon copy aur config me inject karna
+          # Icon copy
           if [ -f "../icon.png" ]; then
             cp ../icon.png icon.png
             sed -i '/<\/widget>/i \    <icon src="icon.png" \/>' config.xml
@@ -55,14 +55,24 @@ jobs:
           sed -i '/<\/widget>/i \    <preference name="NavigationBarColor" value="#ffffff" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="NavigationBarLight" value="true" \/>' config.xml
 
-          # Native Splash band karke direct HTML loader dikhana
+          # Cordova preferences for splash
           sed -i '/<\/widget>/i \    <preference name="SplashScreenDelay" value="0" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="AutoHideSplashScreen" value="true" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="FadeSplashScreen" value="false" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="ShowSplashScreenSpinner" value="false" \/>' config.xml
           sed -i '/<\/widget>/i \    <preference name="BackgroundColor" value="#ffffff" \/>' config.xml
 
+          # Android Platform add karna
           cordova platform add android
+
+          # Robot Icon hatana aur Android 12 Native Splash ko pure white karna
+          THEME_FILE="platforms/android/app/src/main/res/values/themes.xml"
+          if [ -f "$THEME_FILE" ]; then
+            sed -i '/windowSplashScreenAnimatedIcon/d' "$THEME_FILE"
+            sed -i '/windowSplashScreenBackground/d' "$THEME_FILE"
+            sed -i 's|<style name="Theme.App.SplashScreen" parent="Theme.SplashScreen">|<style name="Theme.App.SplashScreen" parent="Theme.SplashScreen">\n        <item name="windowSplashScreenBackground">#ffffff</item>\n        <item name="windowSplashScreenAnimatedIcon">@null</item>\n        <item name="android:windowBackground">#ffffff</item>|g' "$THEME_FILE"
+          fi
+
           cordova build android
 
       - name: Upload APK
