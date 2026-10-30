@@ -30,13 +30,26 @@ jobs:
           cordova create myApp com.pinkkart.shop PinkkartShop
           cd myApp
 
-          # 1. Live Vercel URL connect karna
+          # 1. Status Bar aur Navigation Bar Plugins install karna
+          cordova plugin add cordova-plugin-statusbar
+          cordova plugin add cordova-plugin-navigationbar-color
+
+          # 2. Live Vercel URL connect karna
           sed -i 's|<content src="index.html" />|<content src="https://pinkkart-shop.vercel.app" />|g' config.xml
 
-          # 2. Permissions setup
+          # 3. Permissions setup
           sed -i '/<\/widget>/i \    <allow-navigation href="https://pinkkart-shop.vercel.app*" \/>' config.xml
           sed -i '/<\/widget>/i \    <allow-navigation href="https://*" \/>' config.xml
           sed -i '/<\/widget>/i \    <access origin="*" \/>' config.xml
+
+          # 4. Top Status Bar ko White (#ffffff) aur icons ko Dark karna
+          sed -i '/<\/widget>/i \    <preference name="StatusBarOverlaysWebView" value="false" \/>' config.xml
+          sed -i '/<\/widget>/i \    <preference name="StatusBarBackgroundColor" value="#ffffff" \/>' config.xml
+          sed -i '/<\/widget>/i \    <preference name="StatusBarStyle" value="default" \/>' config.xml
+
+          # 5. Bottom Navigation Bar ko White (#ffffff) aur buttons ko Dark karna
+          sed -i '/<\/widget>/i \    <preference name="NavigationBarColor" value="#ffffff" \/>' config.xml
+          sed -i '/<\/widget>/i \    <preference name="NavigationBarLight" value="true" \/>' config.xml
 
           cordova platform add android
           cordova build android
